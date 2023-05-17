@@ -6,6 +6,7 @@ PREVIEW = 0  # Preview mode
 BLUR = 1  # Blurring Filter
 FEATURES = 2  # Corner Feature Detection
 CANNY = 3  # Canny Edge Detection
+SKETCH = 4  # Sketch Filter
 
 feature_params = dict(maxCorners=500, qualityLevel=0.2,
                       minDistance=15, blockSize=9)
@@ -49,6 +50,8 @@ while alive:
         # The function finds edges in the input image image and marks them in the output map edges using the Canny algorithm. The smallest value between threshold1 and threshold2 is used for edge linking. The largest value is used to find initial segments of strong edges. See http://en.wikipedia.org/wiki/Canny_edge_detector
         #param1 – first threshold for the hysteresis procedure. param2 – second threshold for the hysteresis procedure.
         #Explaination of the parameters: https://docs.opencv.org/3.4/da/d22/tutorial_py_canny.html
+    elif image_filter == SKETCH:
+        result =  cv2.bitwise_not(cv2.Canny(frame, 100, 150))
     elif image_filter == FEATURES:
         result = frame
         frame_gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
@@ -75,6 +78,8 @@ while alive:
         image_filter = FEATURES
     elif key == ord('P') or key == ord('p'):
         image_filter = PREVIEW
+    elif key == ord('S') or key == ord('s'):
+        image_filter = SKETCH
         
 cap.release()
 cv2.destroyWindow(win_name) 
