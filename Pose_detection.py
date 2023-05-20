@@ -18,7 +18,7 @@ POSE_PAIRS = [[0,1],[1,2],[2,3],[3,4],[1,5],[5,6],[6,7],[1,14],[14,8],[8,9],[9,1
 
 def detect_joints(img,net,nPoints=15,threshold=0.1):
     dim = 368
-    blob = cv2.dnn.blobFromImage(img,1.0,(dim,dim),mean=(0,0,0),swapRB=True,crop=False)
+    blob = cv2.dnn.blobFromImage(img,1.0/255,(dim,dim),mean=(0,0,0),swapRB=True,crop=False)
     net.setInput(blob)
     start_time  = time.time()
     output = net.forward()
@@ -28,10 +28,9 @@ def detect_joints(img,net,nPoints=15,threshold=0.1):
     
     width = img.shape[1]
     height = img.shape[0]
-    
+
     scalex = width/output.shape[3]
     scaley = height/output.shape[2]
-    print("Scalex: {}, Scaley: {}".format(scalex,scaley))
     points = []
 
     
@@ -49,22 +48,22 @@ def detect_joints(img,net,nPoints=15,threshold=0.1):
                 
     imPoints = img.copy()
     imSkeleton = img.copy()
-    print(points)
+    # print(points)
     #Draw the detected points
     for i,p in enumerate(points):
         cv2.circle(imPoints,p,8,(255,255,0),thickness=-1,lineType=cv2.FILLED)
         cv2.putText(imPoints,"{}".format(i),p,cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),2,cv2.LINE_AA)
         
-    # #Draw Skeleton
-    # for pair in POSE_PAIRS:
-    #     partA  = pair[0]
-    #     partB = pair[1]
+    #Draw Skeleton
+    for pair in POSE_PAIRS:
+        partA  = pair[0]
+        partB = pair[1]
         
-    #     if points[partA] and points[partB]:
-    #         cv2.line(imSkeleton,points[partA],points[partB],(255,255,0),2)
-    #         cv2.circle(imSkeleton,points[partA],8,(255,0,0),thickness=-1,lineType=cv2.FILLED)
+        if points[partA] and points[partB]:
+            cv2.line(imSkeleton,points[partA],points[partB],(255,255,0),2)
+            cv2.circle(imSkeleton,points[partA],8,(255,0,0),thickness=-1,lineType=cv2.FILLED)
 
-    return imPoints
+    return imPoints, imSkeleton
 
 
     
@@ -89,12 +88,13 @@ while __name__ == '__main__':
         # cv2.flip(frame,1,frame)
         if not has_frame:
             break
-        img = cv2.imread("Tiger_Woods.png")
+        # img = cv2.imread("Tiger_Woods.png")
         # img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+        img = frame
 
-        impoints= detect_joints(img,net)
+        impoints,imskeleton= detect_joints(img,net)
 
-        cv2.imshow(window_name,impoints)
+        cv2.imshow(window_name,imskeleton)
 
     cap.release()
     cv2.destroyWindow(window_name)
