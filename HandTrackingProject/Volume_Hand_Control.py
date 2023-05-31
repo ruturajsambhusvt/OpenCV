@@ -3,6 +3,7 @@ import time
 import numpy as np
 import Hand_Tracking_Module as htm
 import math
+from subprocess import call
 
 ################################
 width_cam,height_cam = 1280,720
@@ -38,9 +39,22 @@ while cv2.waitKey(1) != 27:
         cv2.circle(frame,(cx,cy),15,(255,0,255),cv2.FILLED)
         
         length  = math.hypot(x2-x1,y2-y1)
-        print(length)
+        # print(length)
+        
+        #Hand range 50-300
+        #Volume range 0 - 100
+        
+        vol = np.interp(length,[50,300],[0,100])
+        print(vol)
+        
         if length<50:
             cv2.circle(frame,(cx,cy),15,(0,255,0),cv2.FILLED)
+            
+        cv2.rectangle(frame,(50,150),(85,400),(0,255,0),3)
+        cv2.rectangle(frame,(50,400-int(vol*(400-150)/100)),(85,400),(0,255,0),cv2.FILLED)
+        cv2.putText(frame,f'{int(vol)}%',(40,450),cv2.FONT_HERSHEY_PLAIN,3,(0,255,0),3)
+        
+        call(["amixer","-D","pulse","sset","Master",str(vol)+"%"])
     
     curr_time = time.time()
     fps = 1/(curr_time-prev_time)
