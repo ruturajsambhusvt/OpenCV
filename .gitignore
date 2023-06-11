@@ -14,3 +14,11 @@
 *.jpg
 models/ssd_mobilenet_v2_coco_2018_03_29/
 
+
+TextDetection/dataset/9/.DS_Store
+
+TextDetection/__MACOSX/._dataset
+
+TextDetection/__MACOSX/dataset/
+
+TextDetection/dataset/
