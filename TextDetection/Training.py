@@ -1,7 +1,7 @@
 import numpy as np  
 import cv2
 import time
-# import torch
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -13,11 +13,32 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
 class Net(nn.Module):
-    def __init__(self):
-        super().__init__(in_dim,out_dim,kernel_size,stride,padding)
-        self.conv1 = nn.Conv2d()
+    def __init__(self, in_channels=1, out_channels=4, kernel_size=(3,3),num_classes=10):
+        super(Net,self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, stride=(1,1), padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None) #out_dim = 30
+        self.pool = nn.MaxPool2d(kernel_size=kernel_size,stride=(1,1)) #out_dim = 28
+        self.conv2  = nn.Conv2d(out_channels, out_channels*2, kernel_size, stride=(1,1), padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None) #out_dim = 26, pool = 24
+        self.conv3 = nn.Conv2d(out_channels*2, out_channels*4, kernel_size, stride=(1,1), padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros', device=None, dtype=None) #out_dim = 22, pool = 20
+        self.fc1 = nn.Linear(out_channels*4*20*20,256)
+        self.fc2 = nn.Linear(256,128)
+        self.fc3 = nn.Linear(128,num_classes)
         
-
+    def forward(self,x):
+        x = self.pool(F.relu(self.conv1(x)))
+        print(f"First conv and max pool {x.shape}")
+        x = self.pool(F.relu(self.conv2(x)))
+        print(f"Second conv and max pool {x.shape}")
+        x = self.pool(F.relu(self.conv3(x))) 
+        print(f"Third conv and max pool {x.shape}")
+        x = torch.flatten(x,1)
+        # x = x.reshape(1,6400)
+        print(x.shape)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+    
+        
 
 def preprocess(image):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
@@ -99,11 +120,59 @@ def main():
     # print(X_train[30].shape)
     X_test = np.asarray(list(map(preprocess, X_test)))
     X_validation = np.asarray(list(map(preprocess, X_validation)))
+    
+    print(f"Before reshaping: {X_train.shape}")
 
     ##Depth needed for CNN
-    X_train = X_train.reshape((X_train.shape[0],X_train.shape[1],X_train.shape[2],1))
-    X_test = X_test.reshape((X_test.shape[0],X_test.shape[1],X_test.shape[2],1))
-    X_validation = X_validation.reshape((X_validation.shape[0],X_validation.shape[1],X_validation.shape[2],1))
+    X_train = X_train.reshape((X_train.shape[0],1,X_train.shape[1],X_train.shape[2]))
+    X_test = X_test.reshape((X_test.shape[0],1,X_test.shape[1],X_test.shape[2]))
+    X_validation = X_validation.reshape((X_validation.shape[0],1,X_validation.shape[1],X_validation.shape[2]))
+    
+    X_train = torch.from_numpy(X_train).type(torch.FloatTensor)
+    X_test = torch.from_numpy(X_test).type(torch.FloatTensor)
+    X_validation = torch.from_numpy(X_validation).type(torch.FloatTensor)
+    
+    Y_train = torch.from_numpy(Y_train).type(torch.FloatTensor)
+    Y_test = torch.from_numpy(Y_test).type(torch.FloatTensor)
+    Y_validation = torch.from_numpy(Y_validation).type(torch.FloatTensor)
+    
+    print(f"After reshaping X_train: {X_train.shape}")
+    print(f"After reshaping Y_train: {Y_train.shape}")
+    ##NN instance
+    net = Net()
+    x = torch.randn(1,1,32,32)
+    print(f"Verifying:{net(x).shape}")
+    #Loss and optimizer
+    
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(net.parameters(),lr=0.001)
+    
+    ##Training the model
+    for epoch in range(100):
+        running_loss = 0.0
+        for i in range(len(X_train)):
+            #zero the parameter gradients'
+            print(X_train[i].shape)
+            optimizer.zero_grad()
+            #forward + backward + optimize
+            train_val = X_train[i].reshape(1,1,32,32)
+            outputs = net(train_val)
+            print(f"Shape of outputs {outputs.shape}")
+            print(f"Shape of Y_train {Y_train[i].shape}")
+            loss = criterion(outputs,Y_train[i])
+            loss.backward()
+            optimizer.step()
+            
+            
+            #print statistics
+            running_loss += loss.item()
+            running_loss += loss.item()
+            if i % 2000 == 1999:    # print every 2000 mini-batches
+                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
+                running_loss = 0.0
+        
+
+print('Finished Training')
 
     
     
