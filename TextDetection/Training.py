@@ -12,6 +12,10 @@ import sys
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import time
+import argparse
+
+parser = argparse.ArgumentParser(description='Training the model')
+parser.add_argument('-epochs', type=int, default=10,  help='number of epochs')
 
 
 
@@ -54,20 +58,8 @@ def preprocess(image):
     
     return image
 
-def main():
-
-    ######config
-    run_id = str(int(time.time()))
-    path =  'new_dataset'
-    test_ratio = 0.2
-    validation_ratio  = 0.2
-    # save_path = os.path.join(os.getcwd(),'saved_models','model.pth')
-    save_path = os.path.join(os.getcwd(),'saved_models')
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    save_path = os.path.join(save_path,run_id+'_model.pth')
-    ###########
-
+def get_data(path,test_ratio,validation_ratio):
+    
     myList = os.listdir(path)
 
     myList.sort()
@@ -92,7 +84,7 @@ def main():
             images.append(curr_image)
             class_label.append(num)    
         print(num)
-            
+                
     print(f"The number of images are {len(images)} and the number of labels are {len(class_label)}")
 
     images = np.asarray(images)
@@ -120,14 +112,14 @@ def main():
     plt.ylabel("Number of images")
     plt.show(block=False)
     plt.pause(5)
-  #Testing the preprocess function  
+    #Testing the preprocess function  
     """ img = preprocess(X_train[30])
     print(img.shape)
     img = cv2.resize(img,(300,300))
     cv2.imshow("Preprocessed image",img)
     cv2.waitKey(0) """
     
-     ##map to the preprocess function to all images
+    ##map to the preprocess function to all images
     # print(X_train[30].shape)
     X_train = np.asarray(list(map(preprocess, X_train)))
     # print(X_train[30].shape)
@@ -153,6 +145,29 @@ def main():
     
     print(f"After reshaping X_train: {X_train.shape}")
     print(f"After reshaping Y_train: {Y_train.shape}")
+    
+    return X_train,X_test,X_validation,Y_train,Y_test,Y_validation
+
+def main():
+    
+    args = parser.parse_args()
+    num_epochs = args.epochs
+
+    ######config
+    run_id = str(int(time.time()))
+    path =  'new_dataset'
+    test_ratio = 0.2
+    validation_ratio  = 0.2
+    # save_path = os.path.join(os.getcwd(),'saved_models','model.pth')
+    save_path = os.path.join(os.getcwd(),'saved_models')
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    save_path = os.path.join(save_path,run_id+'_epochs_'+str(num_epochs)+'_model.pth')
+    ###########
+
+    X_train,X_test,X_validation,Y_train,Y_test,Y_validation = get_data(path,test_ratio,validation_ratio)
+    
+    
     # print(Y_train)
     ##NN instance
     net = Net()
@@ -185,7 +200,7 @@ def main():
     running_loss_store = []
     
     ##Training the model
-    for epoch in range(5000):
+    for epoch in range(num_epochs):
         running_loss = 0.0
         batch_size = 64
         for i in range(int(len(X_train)/batch_size)):
@@ -193,8 +208,8 @@ def main():
             # print(X_train[i].shape)
             optimizer.zero_grad()
             #forward + backward + optimize
-            train_val = X_train[i*batch_size:(i+1)*batch_size].reshape(batch_size,1,32,32).clone().detach()
-            train_val = transform(train_val)
+            train_val = X_train[i*batch_size:(i+1)*batch_size].reshape(batch_size,X_train[0].shape[0],X_train[0].shape[1],X_train[0].shape[2]).clone().detach()
+            # train_val = transform(train_val)
             outputs = net(train_val)
             # print(f"Outputs: {outputs}")
             # print(Y_train[i])
