@@ -11,6 +11,9 @@ import os
 import sys  
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+import time
+
+
 
 class Net(nn.Module):
     def __init__(self, in_channels=1, out_channels=4, kernel_size=(3,3),num_classes=10):
@@ -22,17 +25,21 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(out_channels*4*20*20,256)
         self.fc2 = nn.Linear(256,128)
         self.fc3 = nn.Linear(128,num_classes)
+        self.device = torch.device(
+            'cuda:0' if torch.cuda.is_available() else 'cpu')
+
+        self.to(self.device)
         
     def forward(self,x):
         x = self.pool(F.relu(self.conv1(x)))
-        print(f"First conv and max pool {x.shape}")
+        # print(f"First conv and max pool {x.shape}")
         x = self.pool(F.relu(self.conv2(x)))
-        print(f"Second conv and max pool {x.shape}")
+        # print(f"Second conv and max pool {x.shape}")
         x = self.pool(F.relu(self.conv3(x))) 
-        print(f"Third conv and max pool {x.shape}")
+        # print(f"Third conv and max pool {x.shape}")
         x = torch.flatten(x,1)
         # x = x.reshape(1,6400)
-        print(x.shape)
+        # print(x.shape)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -50,9 +57,15 @@ def preprocess(image):
 def main():
 
     ######config
+    run_id = str(int(time.time()))
     path =  'new_dataset'
     test_ratio = 0.2
     validation_ratio  = 0.2
+    # save_path = os.path.join(os.getcwd(),'saved_models','model.pth')
+    save_path = os.path.join(os.getcwd(),'saved_models')
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    save_path = os.path.join(save_path,run_id+'_model.pth')
     ###########
 
     myList = os.listdir(path)
@@ -136,44 +149,86 @@ def main():
     Y_test = torch.from_numpy(Y_test).type(torch.FloatTensor)
     Y_validation = torch.from_numpy(Y_validation).type(torch.FloatTensor)
     
+    
+    
     print(f"After reshaping X_train: {X_train.shape}")
     print(f"After reshaping Y_train: {Y_train.shape}")
+    # print(Y_train)
     ##NN instance
     net = Net()
-    x = torch.randn(1,1,32,32)
-    print(f"Verifying:{net(x).shape}")
+
+    # x = torch.randn(1,1,32,32)
+    # x = x.to(net.device)
+    # print(f"Verifying:{net(x).shape}")
     #Loss and optimizer
     
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters(),lr=0.001)
     
+    transform = transforms.Compose([
+    #  transforms.RandomCrop((8, 8)),
+     transforms.RandomHorizontalFlip(p=0.5),
+     transforms.RandomRotation(degrees=(-90, 90)),
+     transforms.Normalize((0.5), (0.5)),
+    #  transforms.ToTensor(),
+    #  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+     ])
+    
+    X_train = X_train.to(net.device)
+    X_test = X_test.to(net.device)
+    X_validation = X_validation.to(net.device)
+    
+    Y_train = Y_train.to(net.device)
+    Y_test  = Y_test.to(net.device)
+    Y_validation = Y_validation.to(net.device)
+    
+    running_loss_store = []
+    
     ##Training the model
-    for epoch in range(100):
+    for epoch in range(5000):
         running_loss = 0.0
-        for i in range(len(X_train)):
+        batch_size = 64
+        for i in range(int(len(X_train)/batch_size)):
             #zero the parameter gradients'
-            print(X_train[i].shape)
+            # print(X_train[i].shape)
             optimizer.zero_grad()
             #forward + backward + optimize
-            train_val = X_train[i].reshape(1,1,32,32)
+            train_val = X_train[i*batch_size:(i+1)*batch_size].reshape(batch_size,1,32,32).clone().detach()
+            train_val = transform(train_val)
             outputs = net(train_val)
-            print(f"Shape of outputs {outputs.shape}")
-            print(f"Shape of Y_train {Y_train[i].shape}")
-            loss = criterion(outputs,Y_train[i])
+            # print(f"Outputs: {outputs}")
+            # print(Y_train[i])
+            # label = F.one_hot(Y_train[i].long(),num_classes=10)
+            label = Y_train[i*batch_size:(i+1)*batch_size].long().clone().detach() # from warnings, just cloning the tensor alreadt on GPU and detaching
+            # print(label.shape)
+            # label = label.reshape(1,1)
+            # print(label)
+            # print(f"Shape of outputs {outputs.shape}")
+            # print(f"Shape of Y_train {label.shape}")
+            loss = criterion(outputs,label)
             loss.backward()
             optimizer.step()
             
             
             #print statistics
             running_loss += loss.item()
-            running_loss += loss.item()
-            if i % 2000 == 1999:    # print every 2000 mini-batches
-                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
+   
+            if i % 100 == 0 and i!=0:    # print every 100 mini-batches
+                print(f'[{epoch + 1}, {i + 1:5d}] Train loss: {running_loss / 100:.3f}')
+                running_loss_store.append(running_loss/100)
                 running_loss = 0.0
         
 
-print('Finished Training')
+    print('Finished Training')
+    torch.save(net.state_dict(), save_path)
 
+    plt.figure(figsize=(10,5))
+    plt.plot(np.arange(0,100*len(running_loss_store),100),running_loss_store)
+    plt.title("Learning Curve")
+    plt.xlabel("Number of batches")
+    plt.ylabel("Loss over 100 batches")
+    plt.show(block=False)
+    plt.pause(5)
     
     
     

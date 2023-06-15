@@ -22,3 +22,5 @@ TextDetection/__MACOSX/._dataset
 TextDetection/__MACOSX/dataset/
 
 TextDetection/dataset/
+
+*.pth
