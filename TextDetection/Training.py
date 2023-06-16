@@ -156,7 +156,7 @@ def main():
 
     ######config
     run_id = str(int(time.time()))
-    path =  'new_dataset'
+    path =  'larger_dataset'
     test_ratio = 0.2
     validation_ratio  = 0.2
     # save_path = os.path.join(os.getcwd(),'saved_models','model.pth')
@@ -210,7 +210,7 @@ def main():
             optimizer.zero_grad()
             #forward + backward + optimize
             train_val = X_train[i*batch_size:(i+1)*batch_size].reshape(batch_size,X_train[0].shape[0],X_train[0].shape[1],X_train[0].shape[2]).clone().detach()
-            # train_val = transform(train_val)
+            train_val = transform(train_val)
             outputs = net(train_val)
             # print(f"Outputs: {outputs}")
             # print(Y_train[i])

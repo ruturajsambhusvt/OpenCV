@@ -25,7 +25,7 @@ def main():
     
     args = parser.parse_args()
 
-    path =  'new_dataset'
+    path =  'larger_dataset'
     myList = os.listdir(path)
     test_ratio = 0.2
     validation_ratio  = 0.2

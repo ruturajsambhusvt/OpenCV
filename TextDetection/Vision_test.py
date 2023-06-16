@@ -20,9 +20,21 @@ from Training import preprocess
 
 
 def main():
-    model_path = "/home/trec/WorkRaj/Coding_Tutorials/OpenCV/TextDetection/saved_models/1686874684_epochs_100_model.onnx"
+    # model_path = "/home/trec/WorkRaj/Coding_Tutorials/OpenCV/TextDetection/saved_models/1686874684_epochs_100_model.onnx"
+    model_path = "/home/trec/WorkRaj/Coding_Tutorials/OpenCV/TextDetection/saved_models/1686936578_epochs_100_model.onnx"
+    write = False
     opencv_net = cv2.dnn.readNetFromONNX(model_path)
     imagenet_labels = ["0","1","2","3","4","5","6","7","8","9"]
+    
+    transform = transforms.Compose([
+    #  transforms.RandomCrop((8, 8)),
+    #  transforms.RandomHorizontalFlip(p=0.5),
+    #  transforms.RandomRotation(degrees=(-90, 90)),
+     transforms.Normalize((0.5), (0.5)),
+    #  transforms.ToTensor(),
+    #  transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+     ])
+    
     
     
     #############################
@@ -34,14 +46,19 @@ def main():
     cap.set(3,width) #id number for width is 3
     cap.set(4,height) #id number for height is 4
     
+    out_mp4 = cv2.VideoWriter('hadwritten_digit_rec.mp4',cv2.VideoWriter_fourcc(*'XVID'),10,(width,height))
+    
     while True:
         success, img_raw = cap.read()
         img = np.asarray(img_raw)
         img = cv2.resize(img,(32,32))
         img = preprocess(img)
+        
         # cv2.imshow("Processed Image",img)
         # cv2.imshow("Raw Image",img_raw)
         img = np.expand_dims(img,axis=[0,1]) ##cleaner way to do this? Yes, use np.expand_dims(img, axis=0)
+        img = transform(torch.from_numpy(img))
+        img = img.detach().cpu().numpy()
         # set OpenCV DNN input
         opencv_net.setInput(img)
         # OpenCV DNN inference
@@ -58,9 +75,16 @@ def main():
         # print("* confidence: {:.4f}".format(confidence))
         cv2.putText(img_raw, "predicted class: {},confidence: {:.4f} ".format(imagenet_labels[imagenet_class_id],confidence_prob), (50, 50),cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
         cv2.imshow("Raw Image",img_raw)
+        if write:
+            out_mp4.write(img_raw)
+
         
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        
+        
+    cap.release()
+    cv2.destroyAllWindows()
         
         
     
